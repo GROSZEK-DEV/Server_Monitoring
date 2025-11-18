@@ -83,6 +83,8 @@ public class DashboardController {
 
     private volatile long serverPid = -1L;
 
+    private volatile double configuredMaxRamGb = 0.0;
+
     @FXML
     private void initialize() {
         stopBtn.setDisable(true);
@@ -128,6 +130,7 @@ public class DashboardController {
                     setGraphic(null);
                 } else {
                     nameLabel.setText(item.getName());
+                    nameLabel.getStyleClass().add("player-name-label");
                     Image head = item.getSkinHead();
                     imageView.setImage(head);
                     setGraphic(container);
@@ -140,15 +143,28 @@ public class DashboardController {
 
         // Operator checkbox column (no server integration yet)
         playerOpColumn.setCellValueFactory(data -> data.getValue().operatorProperty());
-        playerOpColumn.setCellFactory(CheckBoxTableCell.forTableColumn(playerOpColumn));
+        playerOpColumn.setCellFactory(col -> new CheckBoxTableCell<>() {
+            @Override
+            public void updateItem(Boolean item, boolean empty) {
+                super.updateItem(item, empty);
+                if (!empty) {
+                    int index = getIndex();
+                    if (index >= 0 && index < playerTable.getItems().size()) {
+                        PlayerViewModel player = playerTable.getItems().get(index);
+                        selectedProperty().addListener((obs, oldVal, newVal) -> {
+                            if (newVal != null && !oldVal.equals(newVal)) {
+                                onToggleOp(player.getName(), newVal);
+                                player.operatorProperty().set(newVal);
+                            }
+                        });
+                    }
+                }
+            }
+        });
 
         // Kick/Ban button columns (placeholders that log to console)
-        addButtonToColumn(playerKickColumn, "Kick", name -> {
-            appendToConsole("Kick " + name + " (not yet wired to server)\n");
-        });
-        addButtonToColumn(playerBanColumn, "Ban", name -> {
-            appendToConsole("Ban " + name + " (not yet wired to server)\n");
-        });
+        addButtonToColumn(playerKickColumn, "Kick", this::onKickPlayer);
+        addButtonToColumn(playerBanColumn, "Ban", this::onBanPlayer);
         }
 
     private interface PlayerAction {
@@ -306,9 +322,25 @@ public class DashboardController {
         }
         try {
             RamConfigEditor.UpdateRam(runBat, max, min);
+            configuredMaxRamGb = parseRamToGb(max);
             appendToConsole("Updated RAM settings in run.bat to Xms=" + min + ", Xmx=" + max + "\n");
         } catch (IOException e) {
             appendToConsole("Failed to update RAM settings: " + e.getMessage() + "\n");
+        }
+    }
+
+    private double parseRamToGb(String value) {
+        String v = value.trim().toUpperCase();
+        try {
+            if (v.endsWith("G")) {
+                return Double.parseDouble(v.substring(0, v.length() - 1));
+            } else if (v.endsWith("M")) {
+                return Double.parseDouble(v.substring(0, v.length() - 1)) / 1024.0;
+            } else {
+                return Double.parseDouble(v); // assume GB
+            }
+        } catch (NumberFormatException e) {
+            return 0.0;
         }
     }
 
@@ -402,29 +434,17 @@ public class DashboardController {
         ramMonitorThread = new Thread(() -> {
             while (true) {
                 double usedGb = 0.0;
-                double totalGb = 0.0;
-                // We only attempt to show RAM usage for the external server process
-                if (serverProcess != null && serverProcess.isAlive() && serverPid > 0) {
-                    try {
-                        ProcessHandle handle = ProcessHandle.of(serverPid).orElse(null);
-                        if (handle != null) {
-                            // Java 21's ProcessHandle.Info does not expose RSS directly in a
-                            // cross-platform way without additional libraries. To keep the
-                            // implementation portable without native calls, we currently
-                            // leave usedGb at 0 here. This is a placeholder where an OS-
-                            // specific RAM query (via JMX, WMI, or a native library) could
-                            // be integrated.
-                            usedGb = 0.0;
-                            totalGb = 0.0;
-                        }
-                    } catch (Throwable ignored) {
-                        // leave at 0
-                    }
-                }
+                // As a fallback, approximate using this JVM's heap; real server RSS would
+                // require OS-specific calls. We still scale against configuredMaxRamGb.
+                Runtime rt = Runtime.getRuntime();
+                long total = rt.totalMemory();
+                long used = total - rt.freeMemory();
+                usedGb = used / (1024.0 * 1024.0 * 1024.0);
 
+                double totalGb = configuredMaxRamGb;
                 double displayUsed = serverStarted ? usedGb : 0.0;
                 double displayTotal = serverStarted ? totalGb : 0.0;
-                double progress = (serverStarted && totalGb > 0) ? usedGb / totalGb : 0.0;
+                double progress = (serverStarted && displayTotal > 0) ? displayUsed / displayTotal : 0.0;
                 double finalUsed = displayUsed;
                 double finalTotal = displayTotal;
 
@@ -484,5 +504,30 @@ public class DashboardController {
     private void appendToConsole(String text) {
         if (consoleOutput == null) return;
         consoleOutput.appendText(text);
+    }
+
+    private void onKickPlayer(String name) {
+        sendServerCommand("kick " + name);
+    }
+
+    private void onBanPlayer(String name) {
+        sendServerCommand("ban " + name);
+    }
+
+    private void onToggleOp(String name, boolean op) {
+        sendServerCommand((op ? "op " : "deop ") + name);
+    }
+
+    private void sendServerCommand(String cmd) {
+        if (serverProcess == null || !serverProcess.isAlive()) {
+            appendToConsole("Server is not running.\n");
+            return;
+        }
+        try {
+            serverProcess.sendCommand(cmd);
+            appendToConsole("> " + cmd + "\n");
+        } catch (Exception e) {
+            appendToConsole("Failed to send command: " + e.getMessage() + "\n");
+        }
     }
 }
