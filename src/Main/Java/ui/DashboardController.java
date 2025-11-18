@@ -1,0 +1,340 @@
+package Main.Java.ui;
+
+import Main.Java.server.RamConfigEditor;
+import Main.Java.server.ServerProcess;
+import javafx.application.Platform;
+import javafx.fxml.FXML;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.CheckBoxTableCell;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.stage.DirectoryChooser;
+import javafx.stage.Window;
+import javafx.scene.layout.HBox;
+import javafx.util.Callback;
+
+import java.io.*;
+
+public class DashboardController {
+
+    @FXML
+    private TextArea consoleOutput;
+
+    @FXML
+    private TextField serverPathField;
+
+    @FXML
+    private TextField commandField;
+
+    @FXML
+    private Button startBtn;
+
+    @FXML
+    private Button stopBtn;
+
+    @FXML
+    private Label ramUsedLabel;
+
+    @FXML
+    private Label ramTotalLabel;
+
+    @FXML
+    private ProgressBar ramUsageBar;
+
+    @FXML
+    private TextField minRamField;
+
+    @FXML
+    private TextField maxRamField;
+
+    // Player list table in center
+    @FXML
+    private TableView<PlayerViewModel> playerTable;
+
+    @FXML
+    private TableColumn<PlayerViewModel, PlayerViewModel> playerNameColumn;
+
+    @FXML
+    private TableColumn<PlayerViewModel, Number> playerPingColumn;
+
+    @FXML
+    private TableColumn<PlayerViewModel, Void> playerKickColumn;
+
+    @FXML
+    private TableColumn<PlayerViewModel, Void> playerBanColumn;
+
+    @FXML
+    private TableColumn<PlayerViewModel, Boolean> playerOpColumn;
+
+    private ServerProcess serverProcess;
+    private Thread consoleReaderThread;
+    private Thread ramMonitorThread;
+
+    @FXML
+    private void initialize() {
+        stopBtn.setDisable(true);
+
+        // Send command on Enter key
+        commandField.setOnAction(event -> onSendCommand());
+
+        // Configure player table
+        setupPlayerTable();
+
+        // Start RAM monitor thread (monitor JVM memory as a simple approximation)
+        startRamMonitor();
+    }
+
+    private void setupPlayerTable() {
+        // Name column with head image + name label
+        playerNameColumn.setCellValueFactory(param -> new javafx.beans.property.SimpleObjectProperty<>(param.getValue()));
+        playerNameColumn.setCellFactory(col -> new TableCell<PlayerViewModel, PlayerViewModel>() {
+            private final ImageView imageView = new ImageView();
+            private final Label nameLabel = new Label();
+            private final HBox container = new HBox(6, imageView, nameLabel);
+
+            {
+                imageView.setFitWidth(20);
+                imageView.setFitHeight(20);
+                imageView.setPreserveRatio(true);
+            }
+
+            @Override
+            protected void updateItem(PlayerViewModel item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                } else {
+                    nameLabel.setText(item.getName());
+                    Image head = item.getSkinHead();
+                    imageView.setImage(head);
+                    setGraphic(container);
+                }
+            }
+        });
+
+        // Ping column
+        playerPingColumn.setCellValueFactory(data -> data.getValue().pingProperty());
+
+        // Operator checkbox column (no server integration yet)
+        playerOpColumn.setCellValueFactory(data -> data.getValue().operatorProperty());
+        playerOpColumn.setCellFactory(CheckBoxTableCell.forTableColumn(playerOpColumn));
+
+        // Kick/Ban button columns (placeholders that log to console)
+        addButtonToColumn(playerKickColumn, "Kick", name -> {
+            appendToConsole("Kick " + name + " (not yet wired to server)\n");
+        });
+        addButtonToColumn(playerBanColumn, "Ban", name -> {
+            appendToConsole("Ban " + name + " (not yet wired to server)\n");
+        });
+        }
+
+    private interface PlayerAction {
+        void perform(String playerName);
+    }
+
+    private void addButtonToColumn(TableColumn<PlayerViewModel, Void> column, String label, PlayerAction action) {
+        Callback<TableColumn<PlayerViewModel, Void>, TableCell<PlayerViewModel, Void>> cellFactory = param -> new TableCell<>() {
+            private final Button btn = new Button(label);
+
+            {
+                btn.setOnAction(event -> {
+                    PlayerViewModel player = getTableView().getItems().get(getIndex());
+                    action.perform(player.getName());
+                });
+                btn.getStyleClass().add("secondary-button");
+                btn.setPrefWidth(60);
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    setGraphic(btn);
+                }
+            }
+        };
+        column.setCellFactory(cellFactory);
+    }
+
+    private Image loadDummyHead() {
+        // Placeholder: you'd replace this with a real skin head URL or local resource
+        // For now, this returns null which keeps the ImageView empty but functional
+        return null;
+    }
+
+    @FXML
+    private void onBrowseServer() {
+        Window window = consoleOutput.getScene().getWindow();
+        DirectoryChooser chooser = new DirectoryChooser();
+        chooser.setTitle("Select Minecraft server folder");
+        File folder = chooser.showDialog(window);
+        if (folder != null) {
+            serverPathField.setText(folder.getAbsolutePath());
+        }
+    }
+
+    @FXML
+    private void onStartServer() {
+        if (serverProcess != null) {
+            appendToConsole("Server is already running.\n");
+            return;
+        }
+        String path = serverPathField.getText();
+        if (path == null || path.isBlank()) {
+            appendToConsole("Please choose a server folder first.\n");
+            return;
+        }
+        File dir = new File(path);
+        if (!dir.isDirectory()) {
+            appendToConsole("Selected path is not a folder.\n");
+            return;
+        }
+        serverProcess = new ServerProcess(dir);
+        try {
+            appendToConsole("Starting server in: " + dir.getAbsolutePath() + "\n");
+            serverProcess.start();
+            startBtn.setDisable(true);
+            stopBtn.setDisable(false);
+            startConsoleReader();
+        } catch (Exception e) {
+            appendToConsole("Failed to start server: " + e.getMessage() + "\n");
+            e.printStackTrace();
+            serverProcess = null;
+        }
+    }
+
+    @FXML
+    private void onStopServer() {
+        if (serverProcess == null) {
+            appendToConsole("Server is not running.\n");
+            return;
+        }
+        try {
+            serverProcess.SendCommand("stop");
+            appendToConsole("Sent stop command to server.\n");
+        } catch (Exception e) {
+            appendToConsole("Failed to send stop command: " + e.getMessage() + "\n");
+        }
+        startBtn.setDisable(false);
+        stopBtn.setDisable(true);
+    }
+
+    @FXML
+    private void onRestartServer() {
+        appendToConsole("Restarting server...\n");
+        onStopServer();
+        // Simple delay to let stop command process
+        new Thread(() -> {
+            try {
+                Thread.sleep(4000);
+            } catch (InterruptedException ignored) {}
+            Platform.runLater(this::onStartServer);
+        }).start();
+    }
+
+    @FXML
+    private void onSendCommand() {
+        if (serverProcess == null) {
+            appendToConsole("Server is not running.\n");
+            return;
+        }
+        String cmd = commandField.getText();
+        if (cmd == null || cmd.isBlank()) {
+            return;
+        }
+        try {
+            serverProcess.SendCommand(cmd);
+            appendToConsole("> " + cmd + "\n");
+            commandField.clear();
+        } catch (Exception e) {
+            appendToConsole("Failed to send command: " + e.getMessage() + "\n");
+        }
+    }
+
+    @FXML
+    private void onApplyRamSettings() {
+        String path = serverPathField.getText();
+        if (path == null || path.isBlank()) {
+            appendToConsole("Please choose a server folder first.\n");
+            return;
+        }
+        File dir = new File(path);
+        File runBat = new File(dir, "run.bat");
+        if (!runBat.exists()) {
+            appendToConsole("Could not find run.bat in the selected folder.\n");
+            return;
+        }
+        String min = minRamField.getText();
+        String max = maxRamField.getText();
+        if (min == null || min.isBlank() || max == null || max.isBlank()) {
+            appendToConsole("Please enter both min and max RAM values (e.g. 1G, 4G).\n");
+            return;
+        }
+        try {
+            RamConfigEditor.UpdateRam(runBat, max, min);
+            appendToConsole("Updated RAM settings in run.bat to Xms=" + min + ", Xmx=" + max + "\n");
+        } catch (IOException e) {
+            appendToConsole("Failed to update RAM settings: " + e.getMessage() + "\n");
+        }
+    }
+
+    private void startConsoleReader() {
+        try {
+            InputStream stream = serverProcess.getConsoleStream();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
+            consoleReaderThread = new Thread(() -> {
+                String line;
+                try {
+                    while ((line = reader.readLine()) != null) {
+                        String finalLine = line;
+                        Platform.runLater(() -> appendToConsole(finalLine + "\n"));
+                    }
+                } catch (IOException e) {
+                    Platform.runLater(() -> appendToConsole("Console reader stopped: " + e.getMessage() + "\n"));
+                }
+            }, "server-console-reader");
+            consoleReaderThread.setDaemon(true);
+            consoleReaderThread.start();
+        } catch (Exception e) {
+            appendToConsole("Failed to start console reader: " + e.getMessage() + "\n");
+        }
+    }
+
+    private void startRamMonitor() {
+        ramMonitorThread = new Thread(() -> {
+            Runtime rt = Runtime.getRuntime();
+            while (true) {
+                long total = rt.totalMemory();
+                long used = total - rt.freeMemory();
+                double usedMb = used / (1024.0 * 1024.0);
+                double totalMb = total / (1024.0 * 1024.0);
+                double progress = totalMb == 0 ? 0 : usedMb / totalMb;
+                Platform.runLater(() -> {
+                    if (ramUsedLabel != null) {
+                        ramUsedLabel.setText(String.format("%.0f MB", usedMb));
+                    }
+                    if (ramTotalLabel != null) {
+                        ramTotalLabel.setText(String.format("%.0f MB", totalMb));
+                    }
+                    if (ramUsageBar != null) {
+                        ramUsageBar.setProgress(progress);
+                    }
+                });
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    return;
+                }
+            }
+        }, "ram-monitor");
+        ramMonitorThread.setDaemon(true);
+        ramMonitorThread.start();
+    }
+
+    private void appendToConsole(String text) {
+        if (consoleOutput == null) return;
+        consoleOutput.appendText(text);
+    }
+}
