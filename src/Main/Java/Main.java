@@ -1,21 +1,36 @@
-package Main.Java.ui;
+package Main.Java;
 
-import Main.Java.server.ServerProcess;
+import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
 
-import java.io.File;
+import java.awt.*;
 
-public class Dashboard {
-    private ServerProcess server;
+public class Main extends Application {
 
-    public void OnStartClicked(File serverFolder){
-        server = new ServerProcess(serverFolder);
-        try {
-            server.start();
-        }
-        catch (Exception e){
-            e.printStackTrace();
-        }
+    @Override
+    public void start(Stage stage) throws Exception {
+        FXMLLoader loader = new FXMLLoader(getClass()
+                .getResource("/Main/resources/layout.fxml"));
+
+        //hello
+
+        Parent root = loader.load(); // This loads the FXML
+
+        Scene scene = new Scene(root);
+
+        // Load CSS styling
+        scene.getStylesheets().add(getClass()
+                .getResource("/Main/resources/style.css").toExternalForm());
+
+        stage.setTitle("Minecraft Server Dashboard");
+        stage.setScene(scene);
+        stage.show();
     }
-//jello
 
+    public static void main(String[] args) {
+        launch();
+    }
 }
