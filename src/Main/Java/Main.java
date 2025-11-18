@@ -15,6 +15,8 @@ public class Main extends Application {
         FXMLLoader loader = new FXMLLoader(getClass()
                 .getResource("/Main/resources/layout.fxml"));
 
+        //hello
+
         Parent root = loader.load(); // This loads the FXML
 
         Scene scene = new Scene(root);

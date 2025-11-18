@@ -28,5 +28,6 @@ public class ServerProcess {
     }
     public InputStream getConsoleStream(){
         return process.getInputStream();
+        //hello
     }
 }

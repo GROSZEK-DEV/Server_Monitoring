@@ -5,9 +5,10 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextArea?>
 
-
 <?import javafx.scene.layout.VBox?>
 <BorderPane xmlns:fx="http://javafx.com/fxml">
+
+
 
     <top>
         <Label text="Minecraft Dashboard" styleClass="header"/>
@@ -17,7 +18,7 @@
         <TextArea fx:id="consoleOutput" editable="false"/>
     </center>
 
-    <VBox spacing="20" alignment="CENTER">
+    <VBox spacing="20.5" alignment="CENTER">
         <Button text="Start Server" fx:id="startBtn"/>
         <Button text="Stop Server" fx:id="stopBtn"/>
         <Button text="Restart Server" fx:id="restartBtn"/>
