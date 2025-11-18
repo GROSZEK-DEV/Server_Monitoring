@@ -1,190 +1,195 @@
 /* Global app styles */
-.root {
-    -fx-font-family: "Segoe UI", "Arial", sans-serif;
-    -fx-background-color: #0f172a; /* darker, more professional */
-}
+    .root {
+        -fx-font-family: "Segoe UI", "Arial", sans-serif;
+        -fx-background-color: #0f172a; /* darker, more professional */
+    }
 
-/* Header */
-.header-bar {
-    -fx-background-color: linear-gradient(to right, #111827, #1f2937);
-    -fx-border-color: #1f2937;
-    -fx-border-width: 0 0 1 0;
-}
+    /* Header */
+    .header-bar {
+        -fx-background-color: linear-gradient(to right, #111827, #1f2937);
+        -fx-border-color: #1f2937;
+        -fx-border-width: 0 0 1 0;
+    }
 
-.header-title {
-    -fx-text-fill: #f9fafb;
-    -fx-font-size: 22px;
-    -fx-font-weight: bold;
-}
+    .header-title {
+        -fx-text-fill: #f9fafb;
+        -fx-font-size: 22px;
+        -fx-font-weight: bold;
+    }
 
-.section-title {
-    -fx-text-fill: #e5e7eb;
-    -fx-font-size: 13px;
-    -fx-font-weight: bold;
-    -fx-padding: 0 0 6 0;
-}
+    .section-title {
+        -fx-text-fill: #e5e7eb;
+        -fx-font-size: 13px;
+        -fx-font-weight: bold;
+        -fx-padding: 0 0 6 0;
+    }
 
-/* Left RAM panel */
-.sidebar-left {
-    -fx-background-color: #020617;
-}
+    /* Left RAM panel */
+    .sidebar-left {
+        -fx-background-color: #020617;
+    }
 
-.ram-box {
-    -fx-background-color: #111827;
-    -fx-padding: 10;
-    -fx-background-radius: 6;
-    -fx-border-radius: 6;
-    -fx-border-color: #1f2937;
-}
+    .ram-box {
+        -fx-background-color: #111827;
+        -fx-padding: 10;
+        -fx-background-radius: 6;
+        -fx-border-radius: 6;
+        -fx-border-color: #1f2937;
+    }
 
-.ram-settings-box {
-    -fx-background-color: #020617;
-    -fx-padding: 10;
-    -fx-background-radius: 6;
-    -fx-border-radius: 6;
-    -fx-border-color: #1f2937;
-}
+    .ram-settings-box {
+        -fx-background-color: #020617;
+        -fx-padding: 10;
+        -fx-background-radius: 6;
+        -fx-border-radius: 6;
+        -fx-border-color: #1f2937;
+    }
 
-.ram-label {
-    -fx-text-fill: #9ca3af;
-    -fx-font-size: 11px;
-}
+    .ram-label {
+        -fx-text-fill: #9ca3af;
+        -fx-font-size: 11px;
+    }
 
-.ram-value {
-    -fx-text-fill: #a7f3d0;
-    -fx-font-size: 11px;
-    -fx-font-weight: bold;
-}
+    .ram-value {
+        -fx-text-fill: #a7f3d0;
+        -fx-font-size: 11px;
+        -fx-font-weight: bold;
+    }
 
-/* Buttons */
-.button {
-    -fx-padding: 8 18 8 18;
-    -fx-font-size: 13px;
-}
+    /* Buttons */
+    .button {
+        -fx-padding: 8 18 8 18;
+        -fx-font-size: 13px;
+    }
 
-.primary-button {
-    -fx-background-color: #22c55e;
-    -fx-text-fill: white;
-}
+    .primary-button {
+        -fx-background-color: #22c55e;
+        -fx-text-fill: white;
+    }
 
-.primary-button:hover {
-    -fx-background-color: #16a34a;
-}
+    .primary-button:hover {
+        -fx-background-color: #16a34a;
+    }
 
-.secondary-button {
-    -fx-background-color: #4b5563;
-    -fx-text-fill: #e5e7eb;
-}
+    .secondary-button {
+        -fx-background-color: #4b5563;
+        -fx-text-fill: #e5e7eb;
+    }
 
-.secondary-button:hover {
-    -fx-background-color: #374151;
-}
+    .secondary-button:hover {
+        -fx-background-color: #374151;
+    }
 
-/* Center player table */
-.center-panel {
-    -fx-background-color: #020617;
-}
+    /* Center player table */
+    .center-panel {
+        -fx-background-color: #020617;
+    }
 
-.player-table {
-    -fx-background-color: #020617;
-    -fx-table-cell-border-color: transparent;
-    -fx-border-color: #1f2937;
-    -fx-border-radius: 6;
-}
+    .player-table {
+        -fx-background-color: #020617;
+        -fx-table-cell-border-color: transparent;
+        -fx-border-color: #1f2937;
+        -fx-border-radius: 6;
+    }
 
-.player-table .column-header-background {
-    -fx-max-height: 0;
-    -fx-pref-height: 0;
-    -fx-min-height: 0;
-    -fx-padding: 0;
-    -fx-background-color: transparent;
-}
+    .player-table .column-header-background {
+        -fx-max-height: 0;
+        -fx-pref-height: 0;
+        -fx-min-height: 0;
+        -fx-padding: 0;
+        -fx-background-color: transparent;
+    }
 
-.player-table .column-header, .player-table .filler {
-    -fx-size: 0;
-    -fx-padding: 0;
-}
+    .player-table .column-header, .player-table .filler {
+        -fx-size: 0;
+        -fx-padding: 0;
+    }
 
-.player-table .table-row-cell {
-    -fx-background-color: #020617;
-}
+    .player-table .table-row-cell {
+        -fx-background-color: #020617;
+    }
 
-.player-table .table-row-cell:odd {
-    -fx-background-color: #020617;
-}
+    .player-table .table-row-cell:odd {
+        -fx-background-color: #020617;
+    }
 
-.player-table .table-row-cell:selected {
-    -fx-background-color: #1d4ed8;
-    -fx-text-fill: white;
-}
+    .player-table .table-row-cell:selected {
+        -fx-background-color: #1d4ed8;
+        -fx-text-fill: white;
+    }
 
-/* player name cell text styling */
-.player-name-label {
-    -fx-text-fill: #ffffff;
-    -fx-font-size: 13px;
-}
+    /* player name cell text styling */
+    .player-name-label {
+        -fx-text-fill: #ffffff;
+        -fx-font-size: 13px;
+    }
 
-/* Right console panel */
-.console-panel-right {
-    -fx-background-color: #020617;
-}
+    /* If you add the Minecraft TTF font to your project and register it, this class can be used */
+    .minecraft-font {
+        -fx-font-family: "Minecraft";
+    }
 
-.console-unit {
-    -fx-background-color: #020617;
-    -fx-background-radius: 6;
-    -fx-border-radius: 6;
-    -fx-border-color: #1f2937;
-    -fx-border-width: 1;
-}
+    /* Right console panel */
+    .console-panel-right {
+        -fx-background-color: #020617;
+    }
 
-.console-area {
-    -fx-control-inner-background: #020617;
-    -fx-text-fill: #e5e7eb;
-    -fx-highlight-fill: #4b5563;
-    -fx-highlight-text-fill: white;
-    -fx-background-insets: 0, 0 0 1 0;
-    -fx-border-width: 0 0 1 0;
-    -fx-border-color: #1f2937;
-}
+    .console-unit {
+        -fx-background-color: #020617;
+        -fx-background-radius: 6;
+        -fx-border-radius: 6;
+        -fx-border-color: #1f2937;
+        -fx-border-width: 1;
+    }
 
-.console-input-row {
-    -fx-padding: 4 4 4 8;
-    -fx-background-color: #020617;
-    -fx-background-radius: 0 0 6 6;
-}
+    .console-area {
+        -fx-control-inner-background: #020617;
+        -fx-text-fill: #e5e7eb;
+        -fx-highlight-fill: #4b5563;
+        -fx-highlight-text-fill: white;
+        -fx-background-insets: 0, 0 0 1 0;
+        -fx-border-width: 0 0 1 0;
+        -fx-border-color: #1f2937;
+    }
 
-.console-prompt {
-    -fx-text-fill: #6b7280;
-    -fx-padding: 0 4 0 0;
-}
+    .console-input-row {
+        -fx-padding: 4 4 4 8;
+        -fx-background-color: #020617;
+        -fx-background-radius: 0 0 6 6;
+    }
 
-.console-send-button {
-    -fx-pref-width: 70;
-}
+    .console-prompt {
+        -fx-text-fill: #6b7280;
+        -fx-padding: 0 4 0 0;
+    }
 
-/* Footer */
-.footer-bar {
-    -fx-background-color: #020617;
-    -fx-border-color: #1f2937;
-    -fx-border-width: 1 0 0 0;
-}
+    .console-send-button {
+        -fx-pref-width: 70;
+    }
 
-#restartBtn{
-    /*bankai*/
-}
+    /* Footer */
+    .footer-bar {
+        -fx-background-color: #020617;
+        -fx-border-color: #1f2937;
+        -fx-border-width: 1 0 0 0;
+    }
 
-/* Splash screen overlay at app startup */
-.splash-overlay {
-    -fx-background-color: #020617;
-}
+    #restartBtn{
+        /*bankai*/
+    }
 
-.splash-title {
-    -fx-text-fill: #f9fafb;
-    -fx-font-size: 26px;
-    -fx-font-weight: bold;
-}
+    /* Splash screen overlay at app startup */
+    .splash-overlay {
+        -fx-background-color: #020617;
+    }
 
-.splash-subtitle {
-    -fx-text-fill: #9ca3af;
-    -fx-font-size: 13px;
-}
+    .splash-title {
+        -fx-text-fill: #f9fafb;
+        -fx-font-size: 26px;
+        -fx-font-weight: bold;
+    }
+
+    .splash-subtitle {
+        -fx-text-fill: #9ca3af;
+        -fx-font-size: 13px;
+    }
