@@ -2,6 +2,7 @@ package Main.Java.ui;
 
 import Main.Java.server.RamConfigEditor;
 import Main.Java.server.ServerProcess;
+import javafx.animation.FadeTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -11,7 +12,9 @@ import javafx.scene.image.ImageView;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Window;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.util.Callback;
+import javafx.util.Duration;
 
 import java.io.*;
 
@@ -66,13 +69,30 @@ public class DashboardController {
     @FXML
     private TableColumn<PlayerViewModel, Boolean> playerOpColumn;
 
+    @FXML
+    private StackPane rootPane; // add fx:id on root or a top-level StackPane in FXML
+
+    @FXML
+    private StackPane splashOverlay;
+
     private ServerProcess serverProcess;
     private Thread consoleReaderThread;
     private Thread ramMonitorThread;
+    private volatile boolean serverStarted = false;
 
     @FXML
     private void initialize() {
         stopBtn.setDisable(true);
+
+        // Intro splash fade-out on app startup
+        if (splashOverlay != null) {
+            FadeTransition fadeOut = new FadeTransition(Duration.millis(800), splashOverlay);
+            fadeOut.setFromValue(1.0);
+            fadeOut.setToValue(0.0);
+            fadeOut.setDelay(Duration.millis(1000));
+            fadeOut.setOnFinished(e -> rootPane.getChildren().remove(splashOverlay));
+            fadeOut.play();
+        }
 
         // Send command on Enter key
         commandField.setOnAction(event -> onSendCommand());
@@ -80,7 +100,7 @@ public class DashboardController {
         // Configure player table
         setupPlayerTable();
 
-        // Start RAM monitor thread (monitor JVM memory as a simple approximation)
+        // RAM monitor will show 0 GB until serverStarted is true
         startRamMonitor();
     }
 
@@ -177,7 +197,7 @@ public class DashboardController {
 
     @FXML
     private void onStartServer() {
-        if (serverProcess != null) {
+        if (serverProcess != null && serverProcess.isAlive()) {
             appendToConsole("Server is already running.\n");
             return;
         }
@@ -193,6 +213,7 @@ public class DashboardController {
         }
         serverProcess = new ServerProcess(dir);
         try {
+            showStartupAnimation();
             appendToConsole("Starting server in: " + dir.getAbsolutePath() + "\n");
             serverProcess.start();
             startBtn.setDisable(true);
@@ -207,18 +228,19 @@ public class DashboardController {
 
     @FXML
     private void onStopServer() {
-        if (serverProcess == null) {
+        if (serverProcess == null || !serverProcess.isAlive()) {
             appendToConsole("Server is not running.\n");
             return;
         }
         try {
-            serverProcess.SendCommand("stop");
+            serverProcess.sendCommand("stop");
             appendToConsole("Sent stop command to server.\n");
         } catch (Exception e) {
             appendToConsole("Failed to send stop command: " + e.getMessage() + "\n");
         }
         startBtn.setDisable(false);
         stopBtn.setDisable(true);
+        serverStarted = false;
     }
 
     @FXML
@@ -236,7 +258,7 @@ public class DashboardController {
 
     @FXML
     private void onSendCommand() {
-        if (serverProcess == null) {
+        if (serverProcess == null || !serverProcess.isAlive()) {
             appendToConsole("Server is not running.\n");
             return;
         }
@@ -245,7 +267,7 @@ public class DashboardController {
             return;
         }
         try {
-            serverProcess.SendCommand(cmd);
+            serverProcess.sendCommand(cmd);
             appendToConsole("> " + cmd + "\n");
             commandField.clear();
         } catch (Exception e) {
@@ -283,13 +305,29 @@ public class DashboardController {
     private void startConsoleReader() {
         try {
             InputStream stream = serverProcess.getConsoleStream();
+            if (stream == null) {
+                appendToConsole("No console stream available.\n");
+                return;
+            }
             BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
             consoleReaderThread = new Thread(() -> {
                 String line;
+                boolean bootSection = true;
                 try {
                     while ((line = reader.readLine()) != null) {
                         String finalLine = line;
-                        Platform.runLater(() -> appendToConsole(finalLine + "\n"));
+                        // Filter boot noise until serverStarted is set
+                        if (bootSection) {
+                            if (finalLine.toLowerCase().contains("done") ||
+                                finalLine.toLowerCase().contains("ready") ||
+                                finalLine.toLowerCase().contains("server started")) {
+                                serverStarted = true;
+                                bootSection = false;
+                                Platform.runLater(() -> appendToConsole(finalLine + "\n"));
+                            }
+                        } else {
+                            Platform.runLater(() -> appendToConsole(finalLine + "\n"));
+                        }
                     }
                 } catch (IOException e) {
                     Platform.runLater(() -> appendToConsole("Console reader stopped: " + e.getMessage() + "\n"));
@@ -302,21 +340,51 @@ public class DashboardController {
         }
     }
 
+    private void showStartupAnimation() {
+        if (rootPane == null) {
+            return;
+        }
+        ProgressIndicator indicator = new ProgressIndicator();
+        indicator.setMaxSize(80, 80);
+        StackPane overlay = new StackPane(indicator);
+        overlay.setStyle("-fx-background-color: rgba(15,23,42,0.7);");
+        rootPane.getChildren().add(overlay);
+
+        FadeTransition ft = new FadeTransition(Duration.millis(600), overlay);
+        ft.setFromValue(0.0);
+        ft.setToValue(1.0);
+        ft.play();
+
+        // Remove overlay when server is marked started (in console reader)
+        new Thread(() -> {
+            while (!serverStarted) {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException ignored) {}
+            }
+            Platform.runLater(() -> rootPane.getChildren().remove(overlay));
+        }).start();
+    }
+
     private void startRamMonitor() {
         ramMonitorThread = new Thread(() -> {
             Runtime rt = Runtime.getRuntime();
             while (true) {
                 long total = rt.totalMemory();
                 long used = total - rt.freeMemory();
-                double usedMb = used / (1024.0 * 1024.0);
-                double totalMb = total / (1024.0 * 1024.0);
-                double progress = totalMb == 0 ? 0 : usedMb / totalMb;
+                double usedGb = used / (1024.0 * 1024.0 * 1024.0);
+                double totalGb = total / (1024.0 * 1024.0 * 1024.0);
+
+                double displayUsed = serverStarted ? usedGb : 0.0;
+                double displayTotal = serverStarted ? totalGb : 0.0;
+                double progress = (serverStarted && totalGb > 0) ? usedGb / totalGb : 0.0;
+
                 Platform.runLater(() -> {
                     if (ramUsedLabel != null) {
-                        ramUsedLabel.setText(String.format("%.0f MB", usedMb));
+                        ramUsedLabel.setText(String.format("%.2f GB", displayUsed));
                     }
                     if (ramTotalLabel != null) {
-                        ramTotalLabel.setText(String.format("%.0f MB", totalMb));
+                        ramTotalLabel.setText(String.format("%.2f GB", displayTotal));
                     }
                     if (ramUsageBar != null) {
                         ramUsageBar.setProgress(progress);
