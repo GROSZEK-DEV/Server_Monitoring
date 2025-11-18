@@ -59,9 +59,6 @@ public class DashboardController {
     private TableColumn<PlayerViewModel, PlayerViewModel> playerNameColumn;
 
     @FXML
-    private TableColumn<PlayerViewModel, Number> playerPingColumn;
-
-    @FXML
     private TableColumn<PlayerViewModel, Void> playerKickColumn;
 
     @FXML
@@ -121,6 +118,8 @@ public class DashboardController {
                 imageView.setFitWidth(20);
                 imageView.setFitHeight(20);
                 imageView.setPreserveRatio(true);
+                nameLabel.getStyleClass().add("player-name-label");
+                nameLabel.getStyleClass().add("minecraft-font");
             }
 
             @Override
@@ -130,16 +129,14 @@ public class DashboardController {
                     setGraphic(null);
                 } else {
                     nameLabel.setText(item.getName());
-                    nameLabel.getStyleClass().add("player-name-label");
-                    Image head = item.getSkinHead();
+                    // Load player head from Minotar API based on name
+                    String url = "https://minotar.net/avatar/" + item.getName() + "/40.png";
+                    Image head = new Image(url, true);
                     imageView.setImage(head);
                     setGraphic(container);
                 }
             }
         });
-
-        // Ping column
-        playerPingColumn.setCellValueFactory(data -> data.getValue().pingProperty());
 
         // Operator checkbox column (no server integration yet)
         playerOpColumn.setCellValueFactory(data -> data.getValue().operatorProperty());
@@ -421,6 +418,7 @@ public class DashboardController {
                 .findFirst()
                 .orElse(null);
         if (existing == null) {
+            // Create view model; head image will be lazily loaded in the cell from Minotar
             playerTable.getItems().add(new PlayerViewModel(name, 0, false, null));
         }
     }
