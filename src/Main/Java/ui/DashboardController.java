@@ -17,6 +17,7 @@ import javafx.util.Callback;
 import javafx.util.Duration;
 
 import java.io.*;
+import java.lang.management.ManagementFactory;
 
 public class DashboardController {
 
@@ -79,6 +80,8 @@ public class DashboardController {
     private Thread consoleReaderThread;
     private Thread ramMonitorThread;
     private volatile boolean serverStarted = false;
+
+    private volatile long serverPid = -1L;
 
     @FXML
     private void initialize() {
@@ -216,6 +219,13 @@ public class DashboardController {
             showStartupAnimation();
             appendToConsole("Starting server in: " + dir.getAbsolutePath() + "\n");
             serverProcess.start();
+            // capture PID if available
+            Process p = serverProcess.getProcess();
+            try {
+                serverPid = p.pid();
+            } catch (Throwable ignored) {
+                serverPid = -1L;
+            }
             startBtn.setDisable(true);
             stopBtn.setDisable(false);
             startConsoleReader();
@@ -316,11 +326,14 @@ public class DashboardController {
                 try {
                     while ((line = reader.readLine()) != null) {
                         String finalLine = line;
+                        // Player join/leave parsing
+                        handlePlayerEvents(finalLine);
                         // Filter boot noise until serverStarted is set
                         if (bootSection) {
-                            if (finalLine.toLowerCase().contains("done") ||
-                                finalLine.toLowerCase().contains("ready") ||
-                                finalLine.toLowerCase().contains("server started")) {
+                            String lower = finalLine.toLowerCase();
+                            if (lower.contains("done") ||
+                                lower.contains("ready") ||
+                                lower.contains("server started")) {
                                 serverStarted = true;
                                 bootSection = false;
                                 Platform.runLater(() -> appendToConsole(finalLine + "\n"));
@@ -338,6 +351,107 @@ public class DashboardController {
         } catch (Exception e) {
             appendToConsole("Failed to start console reader: " + e.getMessage() + "\n");
         }
+    }
+
+    private void handlePlayerEvents(String logLine) {
+        // Basic patterns; adjust as needed for your log format
+        // Example: "[19:32:07] [Server thread/INFO]: PlayerName joined the game"
+        String lower = logLine.toLowerCase();
+        if (lower.contains(" joined the game")) {
+            String name = extractPlayerName(logLine, "joined the game");
+            if (name != null && !name.isBlank()) {
+                Platform.runLater(() -> addOrUpdatePlayer(name));
+            }
+        } else if (lower.contains(" left the game")) {
+            String name = extractPlayerName(logLine, "left the game");
+            if (name != null && !name.isBlank()) {
+                Platform.runLater(() -> removePlayer(name));
+            }
+        }
+    }
+
+    private String extractPlayerName(String logLine, String marker) {
+        int idx = logLine.indexOf(marker);
+        if (idx <= 0) return null;
+        String before = logLine.substring(0, idx).trim();
+        // Take the last token before the marker as the name
+        int lastSpace = before.lastIndexOf(' ');
+        if (lastSpace >= 0 && lastSpace < before.length() - 1) {
+            return before.substring(lastSpace + 1).trim();
+        }
+        return before;
+    }
+
+    private void addOrUpdatePlayer(String name) {
+        if (playerTable == null) return;
+        PlayerViewModel existing = playerTable.getItems().stream()
+                .filter(p -> p.getName().equalsIgnoreCase(name))
+                .findFirst()
+                .orElse(null);
+        if (existing == null) {
+            playerTable.getItems().add(new PlayerViewModel(name, 0, false, null));
+        }
+    }
+
+    private void removePlayer(String name) {
+        if (playerTable == null) return;
+        playerTable.getItems().removeIf(p -> p.getName().equalsIgnoreCase(name));
+    }
+
+    private void startRamMonitor() {
+        ramMonitorThread = new Thread(() -> {
+            while (true) {
+                double usedGb = 0.0;
+                double totalGb = 0.0;
+                // We only attempt to show RAM usage for the external server process
+                if (serverProcess != null && serverProcess.isAlive() && serverPid > 0) {
+                    try {
+                        ProcessHandle handle = ProcessHandle.of(serverPid).orElse(null);
+                        if (handle != null) {
+                            // Java 21's ProcessHandle.Info does not expose RSS directly in a
+                            // cross-platform way without additional libraries. To keep the
+                            // implementation portable without native calls, we currently
+                            // leave usedGb at 0 here. This is a placeholder where an OS-
+                            // specific RAM query (via JMX, WMI, or a native library) could
+                            // be integrated.
+                            usedGb = 0.0;
+                            totalGb = 0.0;
+                        }
+                    } catch (Throwable ignored) {
+                        // leave at 0
+                    }
+                }
+
+                double displayUsed = serverStarted ? usedGb : 0.0;
+                double displayTotal = serverStarted ? totalGb : 0.0;
+                double progress = (serverStarted && totalGb > 0) ? usedGb / totalGb : 0.0;
+                double finalUsed = displayUsed;
+                double finalTotal = displayTotal;
+
+                Platform.runLater(() -> {
+                    if (ramUsedLabel != null) {
+                        ramUsedLabel.setText(String.format("%.2f GB", finalUsed));
+                    }
+                    if (ramTotalLabel != null) {
+                        if (finalTotal > 0) {
+                            ramTotalLabel.setText(String.format("%.2f GB", finalTotal));
+                        } else {
+                            ramTotalLabel.setText("-");
+                        }
+                    }
+                    if (ramUsageBar != null) {
+                        ramUsageBar.setProgress(progress);
+                    }
+                });
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    return;
+                }
+            }
+        }, "ram-monitor");
+        ramMonitorThread.setDaemon(true);
+        ramMonitorThread.start();
     }
 
     private void showStartupAnimation() {
@@ -366,40 +480,6 @@ public class DashboardController {
         }).start();
     }
 
-    private void startRamMonitor() {
-        ramMonitorThread = new Thread(() -> {
-            Runtime rt = Runtime.getRuntime();
-            while (true) {
-                long total = rt.totalMemory();
-                long used = total - rt.freeMemory();
-                double usedGb = used / (1024.0 * 1024.0 * 1024.0);
-                double totalGb = total / (1024.0 * 1024.0 * 1024.0);
-
-                double displayUsed = serverStarted ? usedGb : 0.0;
-                double displayTotal = serverStarted ? totalGb : 0.0;
-                double progress = (serverStarted && totalGb > 0) ? usedGb / totalGb : 0.0;
-
-                Platform.runLater(() -> {
-                    if (ramUsedLabel != null) {
-                        ramUsedLabel.setText(String.format("%.2f GB", displayUsed));
-                    }
-                    if (ramTotalLabel != null) {
-                        ramTotalLabel.setText(String.format("%.2f GB", displayTotal));
-                    }
-                    if (ramUsageBar != null) {
-                        ramUsageBar.setProgress(progress);
-                    }
-                });
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    return;
-                }
-            }
-        }, "ram-monitor");
-        ramMonitorThread.setDaemon(true);
-        ramMonitorThread.start();
-    }
 
     private void appendToConsole(String text) {
         if (consoleOutput == null) return;
