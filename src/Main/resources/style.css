@@ -87,7 +87,7 @@
 
 .player-table {
     -fx-background-color: #020617;
-    -fx-table-cell-border-color: #1f2937;
+    -fx-table-cell-border-color: transparent;
     -fx-border-color: #1f2937;
     -fx-border-radius: 6;
 }
@@ -116,6 +116,12 @@
 .player-table .table-row-cell:selected {
     -fx-background-color: #1d4ed8;
     -fx-text-fill: white;
+}
+
+/* player name cell text styling */
+.player-name-label {
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 13px;
 }
 
 /* Right console panel */
