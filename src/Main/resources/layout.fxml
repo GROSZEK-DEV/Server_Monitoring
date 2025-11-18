@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextArea?>
+
+
+<?import javafx.scene.layout.VBox?>
+<BorderPane xmlns:fx="http://javafx.com/fxml">
+
+    <top>
+        <Label text="Minecraft Dashboard" styleClass="header"/>
+    </top>
+
+    <center>
+        <TextArea fx:id="consoleOutput" editable="false"/>
+    </center>
+
+    <VBox spacing="20" alignment="CENTER">
+        <Button text="Start Server" fx:id="startBtn"/>
+        <Button text="Stop Server" fx:id="stopBtn"/>
+        <Button text="Restart Server" fx:id="restartBtn"/>
+    </VBox>
+
+</BorderPane>
