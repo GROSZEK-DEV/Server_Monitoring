@@ -95,7 +95,6 @@
                             </columnResizePolicy>
                             <columns>
                                 <TableColumn fx:id="playerNameColumn" text="Name" />
-                                <TableColumn fx:id="playerPingColumn" text="Ping" />
                                 <TableColumn fx:id="playerKickColumn" text="Kick" />
                                 <TableColumn fx:id="playerBanColumn" text="Ban" />
                                 <TableColumn fx:id="playerOpColumn" text="Operator" />
