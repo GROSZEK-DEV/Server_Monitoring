@@ -6,7 +6,7 @@ import java.io.OutputStreamWriter;
 
 public class ServerProcess {
     private Process process;
-    private File serverDir;
+    private final File serverDir;
 
     public ServerProcess(File serverDir){
         this.serverDir = serverDir;
@@ -15,19 +15,23 @@ public class ServerProcess {
     public void start() throws Exception{
         ProcessBuilder pb = new ProcessBuilder("cmd.exe","/c","run.bat");
         pb.directory(serverDir);
+        pb.redirectErrorStream(true);
         process = pb.start();
     }
-    public void SendCommand(String cmd) throws Exception{
-        if (process != null){
-            OutputStreamWriter writer
-                    = new OutputStreamWriter(process.getOutputStream());
 
-            writer.write( cmd + "/n");
+    public void sendCommand(String cmd) throws Exception{
+        if (process != null){
+            OutputStreamWriter writer = new OutputStreamWriter(process.getOutputStream());
+            writer.write(cmd + System.lineSeparator());
             writer.flush();
         }
     }
+
     public InputStream getConsoleStream(){
-        return process.getInputStream();
-        //hello
+        return process != null ? process.getInputStream() : null;
+    }
+
+    public boolean isAlive() {
+        return process != null && process.isAlive();
     }
 }
