@@ -34,4 +34,8 @@ public class ServerProcess {
     public boolean isAlive() {
         return process != null && process.isAlive();
     }
+
+    public Process getProcess() {
+        return process;
+    }
 }
