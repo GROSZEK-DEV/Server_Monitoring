@@ -166,3 +166,19 @@
 #restartBtn{
     /*bankai*/
 }
+
+/* Splash screen overlay at app startup */
+.splash-overlay {
+    -fx-background-color: #020617;
+}
+
+.splash-title {
+    -fx-text-fill: #f9fafb;
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+}
+
+.splash-subtitle {
+    -fx-text-fill: #9ca3af;
+    -fx-font-size: 13px;
+}
